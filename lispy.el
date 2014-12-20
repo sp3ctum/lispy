@@ -1876,6 +1876,69 @@ When ARG is more than 1, pull ARGth expression to enclose current sexp."
           (t
            (error "Unexpected")))))
 
+(defun lispy-map-recursive (func expr)
+  (cond ((null expr)
+         nil)
+        ((listp expr)
+         (funcall func
+                  (cons
+                   (lispy-map-recursive func (car expr))
+                   (lispy-map-recursive func (cdr expr)))))
+        (t
+         expr)))
+
+(defun lispy-mapcan-recursive (func expr)
+  (cond ((null expr)
+         nil)
+        ((listp expr)
+         (funcall func
+                  (lispy-mapcan-recursive func (car expr))
+                  (lispy-mapcan-recursive func (cdr expr))))
+        (t
+         expr)))
+
+(defun lispy-multiline-1 ()
+  "Spread current sexp over multiple lines."
+  (interactive)
+  (lispy-from-left
+   (let* ((bnd (lispy--bounds-list))
+          (str (lispy--string-dwim bnd))
+          (expr (lispy--read str)))
+     (delete-region (car bnd) (cdr bnd))
+     (lispy--insert
+      (lispy-mapcan-recursive
+       (lambda (x y)
+         (cond ((equal x '(ly-raw empty))
+                `((ly-raw empty) (ly-raw newline)
+                  ,@y))
+
+               ((lispy--raw-string-p x)
+                `((ly-raw string ,(replace-regexp-in-string "\\\\n" "\n" (caddr x)))
+                  ,y))
+               (t
+                (cons x y))))
+       expr)))))
+
+
+(defun lispy-oneline-1 ()
+  "Squeeze current sexp into one line.
+Comments will be moved ahead of sexp."
+  (interactive)
+  (let* ((bnd (lispy--bounds-dwim))
+         (str (lispy--string-dwim bnd)))
+    (delete-region (car bnd)
+                   (cdr bnd))
+    (lispy--insert
+     (lispy-map-recursive
+      (lambda (x)
+        (cond ((equal x '(ly-raw newline))
+               '(ly-raw ignore))
+              ((lispy--raw-string-p x)
+               `(ly-raw string ,(replace-regexp-in-string "\n" "\\\\n" (caddr x))))
+              (t
+               x)))
+      (lispy--read str)))))
+
 (defun lispy-oneline ()
   "Squeeze current sexp into one line.
 Comments will be moved ahead of sexp."
