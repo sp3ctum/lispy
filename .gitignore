@@ -1,3 +1,4 @@
 /init.el
 /gh-pages/
 /.projectile
+.cask
