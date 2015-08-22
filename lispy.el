@@ -287,6 +287,15 @@ using those packages."
            (const :tag "edebug" edebug)
            (const :tag "macrostep" macrostep))))
 
+(defcustom lispy-color-point-when-on-special t
+  "If non-nil, the cursor (point) will be colored differently when point is on a parentheses.")
+
+(defcustom lispy-cursor-color-special "lightgreen"
+  "Color of the cursor when on a special position, e.g. \"lightgreen\" or \"AA87CC\"")
+
+(defvar lispy-cursor-color-nonspecial (frame-parameter (selected-frame) 'cursor-color)
+  "Color of the cursor when not on a special position, e.g. \"white\" or \"AABBCC\"")
+
 ;;;###autoload
 (define-minor-mode lispy-mode
   "Minor mode for navigating and editing LISP dialects.
@@ -321,6 +330,16 @@ backward through lists, which is useful to move into special.
                 (cons 'lispy-mode lispy-known-verbs))))
     (setq-local outline-regexp ";;;\\(;* [^ \t\n]\\|###autoload\\)\\|(")
     (setq-local outline-level 'lisp-outline-level)))
+
+;; color point if on special
+(defun lispy--color-cursor-if-on-special ()
+  (if (or (lispy-right-p)
+          (lispy-left-p))
+      (set-cursor-color lispy-cursor-color-special)
+    (set-cursor-color lispy-cursor-color-nonspecial)))
+
+(when (fboundp 'set-cursor-color)
+  (add-hook 'post-command-hook 'lispy--color-cursor-if-on-special))
 
 (defun lispy-raise-minor-mode (mode)
   "Make MODE the first on `minor-mode-map-alist'."
